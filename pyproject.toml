@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "Whitelist Censor Service Server"
+version = "0.1.0"
+description = ""
+authors = ["RRR-09 <79768142+RRR-09@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^0.21.0"
+pytz = "^2022.2.1"
+"discord.py" = "^2.0.1"
+websockets = "^10.3"
+
+[tool.poetry.dev-dependencies]
+black = "^22.8.0"
+bandit = "^1.7.4"
+flake8 = "^5.0.4"
+isort = "^5.10.1"
+mypy = "^0.971"
+ossaudit = "^0.5.0"
+types-pytz = "^2022.2.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+src_paths=["src"]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true

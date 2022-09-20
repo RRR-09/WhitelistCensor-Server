@@ -1,0 +1,23 @@
+# Project files
+data/custom_old.json
+data/custom.json
+data/nicknames.json
+data/trusted_usernames.json
+data/usernames.json
+config.json
+*.log
+
+# .env
+.env
+
+# PyCache
+__pycache__/
+
+# mypy
+.mypy_cache/
+
+# poetry
+.venv/
+
+# ci (local runs)
+requirements-dev.txt
