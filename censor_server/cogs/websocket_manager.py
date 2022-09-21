@@ -1,7 +1,9 @@
 import asyncio
 import json
+from asyncio import sleep as async_sleep
 from enum import Enum
-from typing import Any, Set
+from time import time
+from typing import Callable, Set
 
 import websockets
 from discord.ext import commands  # type: ignore
@@ -9,43 +11,72 @@ from utils import BotClass
 
 
 class WSFunction(str, Enum):
+    AUTH = "AUTH"
     WHITELIST_REQUEST = "WHITELIST_REQUEST"
 
 
 class WSResponse(str, Enum):
     COMPLETE = "COMPLETE"
+    AUTH_SUCCESS = "AUTH_SUCCESS"
+    AUTH_FAIL = "AUTH_FAIL"
 
 
 class WSManager:
-    def __init__(self, valid_ids: Set[str]):
-        self.connections: Set[Any] = set()
+    def __init__(self, valid_ids: Set[str], request_whitelist_func: Callable):
+        self.connections: Set[str] = set()
         self.valid_ids = valid_ids
+        self.request_whitelist_func = request_whitelist_func
 
-    async def ws_handler(self, websocket):
-        raw_data = await websocket.recv()
+    async def process_message(self, websocket, raw_message):
         try:
-            data = json.loads(raw_data)
+            message = json.loads(raw_message)
         except Exception:
             await websocket.close(code=1003, reason="Invalid JSON")
             return
 
-        client_id = data.get("id")
+        client_id = message.get("id")
         if client_id not in self.valid_ids:
             await websocket.close(code=1003, reason="Invalid Auth")
             return
 
-        func = data.get("function")
+        func = message.get("function")
         if func not in WSFunction.__members__:
             await websocket.close(code=1003, reason="Invalid Function")
             return
+        
+        backup_timestamp = f"servermsg_{str(time()).replace('.','')}"
+        timestamp = message.get("timestamp", backup_timestamp)
+        response_message = WSResponse.COMPLETE
 
-        print(data)
+        if func == WSFunction.AUTH:
+            print(f"[WS] Authed {client_id}")
+            response_message = WSResponse.AUTH_SUCCESS
+        elif func == WSFunction.WHITELIST_REQUEST:
+            data = message.get("data")
+            print(f"[WS] Whitelist Request: \n{data}\n")
+            await self.request_whitelist_func(data)
 
-        response = {"id": client_id, "message": WSResponse.COMPLETE}
-
+        response = {"id": client_id, "timestamp": timestamp, "message": response_message}
         await websocket.send(json.dumps(response))
 
-        await websocket.close(reason="Complete")
+
+
+    async def ws_handler(self, websocket):
+        raw_data = await websocket.recv()
+        await self.process_message(websocket, raw_data)
+        self.connections.add(websocket)
+        
+        try:
+            async for raw_message in websocket:
+                print("[WS] Processing message")
+                await self.process_message(websocket, raw_message)
+                
+                await async_sleep(0)
+        except websockets.exceptions.ConnectionClosedError:
+            pass
+        
+        self.connections.remove(websocket)                
+        
 
     def message_all(self, message):
         print(f"[WS] Sent: {message}")
@@ -59,9 +90,16 @@ class WebsocketManagerCog(commands.Cog):
     def __init__(self, bot: BotClass):
         self.bot = bot
         authorized_clients: Set[str] = self.bot.CFG.get("ws_authorized_clients", set())
-        self.ws_manager = WSManager(authorized_clients)
+        request_whitelist_func = self.bot.client.get_cog("WhitelistCog").request_whitelist
+        self.ws_manager = WSManager(authorized_clients, request_whitelist_func)
         asyncio.create_task(self.ws_init())
 
     async def ws_init(self):
-        async with websockets.serve(self.ws_manager.ws_handler, "127.0.0.1", 8087):
-            await asyncio.Future()  # run forever
+        while True:
+            print("[WS] Starting server")
+            try:
+                async with websockets.serve(self.ws_manager.ws_handler, "127.0.0.1", 8087):
+                    print("[WS] Server started")
+                    await asyncio.Future()  # run forever
+            except Exception:
+                print("[WS] Stopping server")

@@ -4,6 +4,7 @@ from traceback import format_exc
 import discord
 import utils
 from cogs.websocket_manager import WebsocketManagerCog
+from cogs.whitelist import WhitelistCog
 from dotenv import load_dotenv
 
 global bot
@@ -41,6 +42,7 @@ async def on_message(message: discord.Message):
 
 
 async def post_init():
+    await bot.client.add_cog(WhitelistCog(bot))
     await bot.client.add_cog(WebsocketManagerCog(bot))
 
 

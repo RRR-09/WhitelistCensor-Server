@@ -9,6 +9,12 @@
 
   "ws_authorized_clients": ["CLIENTNAME_12345"],
 
+  "whitelist_approve": "✅",
+  "whitelist_reject": "❌",
+  "whitelist_spacer": "⬛",
+  "whitelist_set_username": "🇺",
+  "whitelist_set_word": "🇼",
+
   "watchdog": {
     "bot_vars": {
       "directory": "$HOME/discord_bots/bot_name/src",
