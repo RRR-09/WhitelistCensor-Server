@@ -39,12 +39,13 @@ class WhitelistDatasets(TypedDict):
     usernames: Set[str]
     version: int
 
+
 class WhitelistCog(commands.Cog):
     def __init__(self, bot: BotClass):
         self.bot = bot
         self.user_whitelist_channel = self.bot.channels["username-request"]
         self.word_whitelist_channel = self.bot.channels["whitelist-request"]
-        
+
         self.data_path = Path("..", "data")
         self.paths = {
             "blacklist": self.data_path / "blacklist.json",
@@ -67,7 +68,7 @@ class WhitelistCog(commands.Cog):
             "set_word": self.bot.CFG.get("whitelist_set_username", "🇼"),
         }
         self.react_emoji_order = ["approve", "reject", "spacer"]
-        
+
         self.init_files_if_missing()
         self.datasets = self.load_data()
 
@@ -77,8 +78,10 @@ class WhitelistCog(commands.Cog):
         username = data.get("username", "")
         is_username_req = data.get("is_username_req", False)
         channel_name = data.get("channel_name", "")
-        
-        user_url = f"https://twitch.tv/popout/{channel_name}/viewercard/{username.lower()}"
+
+        user_url = (
+            f"https://twitch.tv/popout/{channel_name}/viewercard/{username.lower()}"
+        )
         command = "!userwhitelist" if is_username_req else "!whitelist"
         whitelist_text = [f"{command} {word}" for word in requests]
         message_title = (
@@ -91,13 +94,17 @@ class WhitelistCog(commands.Cog):
             f"<https://twitch.tv/{channel_name}>\n** **"
         )
 
-        channel = self.user_whitelist_channel if is_username_req else self.word_whitelist_channel
+        channel = (
+            self.user_whitelist_channel
+            if is_username_req
+            else self.word_whitelist_channel
+        )
 
         await channel.send(header_content)
         messages_to_react: List[DiscordMessage] = []
         for request in whitelist_text:
             messages_to_react.append(await channel.send(request))
-        
+
         set_emoji_key = "set_username" if is_username_req else "set_word"
         react_emoji_order = self.react_emoji_order + [set_emoji_key]
 
@@ -105,10 +112,6 @@ class WhitelistCog(commands.Cog):
             for react_emoji in react_emoji_order:
                 await message.add_reaction(self.react_emojis[react_emoji])
                 await async_sleep(0.1)
-            
-            set_emoji_key = f"set_"
-        
-        # {'requests': ['notinwhitelist'], 'message': 'not_in_whitelist test message', 'username': 'username_trigger', 'is_username_req': False, 'channel_name': 'becomefumocam2'}
 
     def init_files_if_missing(self):
         self.data_path.mkdir(parents=True, exist_ok=True)
@@ -122,7 +125,7 @@ class WhitelistCog(commands.Cog):
             "random_prefixes": [],
             "random_suffixes": [],
             "trusted_usernames": [],
-            "usernames": []
+            "usernames": [],
         }
         for file_path_key, default_value in default_data.items():
             path = self.paths[file_path_key]

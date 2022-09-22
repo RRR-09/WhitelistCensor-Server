@@ -43,7 +43,7 @@ class WSManager:
         if func not in WSFunction.__members__:
             await websocket.close(code=1003, reason="Invalid Function")
             return
-        
+
         backup_timestamp = f"servermsg_{str(time()).replace('.','')}"
         timestamp = message.get("timestamp", backup_timestamp)
         response_message = WSResponse.COMPLETE
@@ -56,27 +56,28 @@ class WSManager:
             print(f"[WS] Whitelist Request: \n{data}\n")
             await self.request_whitelist_func(data)
 
-        response = {"id": client_id, "timestamp": timestamp, "message": response_message}
+        response = {
+            "id": client_id,
+            "timestamp": timestamp,
+            "message": response_message,
+        }
         await websocket.send(json.dumps(response))
-
-
 
     async def ws_handler(self, websocket):
         raw_data = await websocket.recv()
         await self.process_message(websocket, raw_data)
         self.connections.add(websocket)
-        
+
         try:
             async for raw_message in websocket:
                 print("[WS] Processing message")
                 await self.process_message(websocket, raw_message)
-                
+
                 await async_sleep(0)
         except websockets.exceptions.ConnectionClosedError:
             pass
-        
-        self.connections.remove(websocket)                
-        
+
+        self.connections.remove(websocket)
 
     def message_all(self, message):
         print(f"[WS] Sent: {message}")
@@ -90,7 +91,9 @@ class WebsocketManagerCog(commands.Cog):
     def __init__(self, bot: BotClass):
         self.bot = bot
         authorized_clients: Set[str] = self.bot.CFG.get("ws_authorized_clients", set())
-        request_whitelist_func = self.bot.client.get_cog("WhitelistCog").request_whitelist
+        request_whitelist_func = self.bot.client.get_cog(
+            "WhitelistCog"
+        ).request_whitelist
         self.ws_manager = WSManager(authorized_clients, request_whitelist_func)
         asyncio.create_task(self.ws_init())
 
@@ -98,7 +101,9 @@ class WebsocketManagerCog(commands.Cog):
         while True:
             print("[WS] Starting server")
             try:
-                async with websockets.serve(self.ws_manager.ws_handler, "127.0.0.1", 8087):
+                async with websockets.serve(
+                    self.ws_manager.ws_handler, "127.0.0.1", 8087
+                ):
                     print("[WS] Server started")
                     await asyncio.Future()  # run forever
             except Exception:
