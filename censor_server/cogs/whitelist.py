@@ -1,11 +1,20 @@
 import json
 from asyncio import sleep as async_sleep
+from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Set, TypedDict
+from typing import Dict, List, Optional, Set, TypedDict, cast
 
-from discord import Message as DiscordMessage
+from discord import Message, RawReactionActionEvent, TextChannel
 from discord.ext import commands  # type: ignore
 from utils import BotClass
+
+
+class EmojiAction(str, Enum):
+    APPROVE = "APPROVE"
+    REJECT = "REJECT"
+    SPACER = "SPACER"
+    SET_USERNAME = "SET_USERNAME"
+    SET_WORD = "SET_WORD"
 
 
 class WhitelistDatasets(TypedDict):
@@ -45,6 +54,12 @@ class WhitelistCog(commands.Cog):
         self.bot = bot
         self.user_whitelist_channel = self.bot.channels["username-request"]
         self.word_whitelist_channel = self.bot.channels["whitelist-request"]
+        self.rejected_channel = self.bot.channels["whitelist-rejected"]
+
+        self.valid_react_channel_ids = {
+            self.user_whitelist_channel.id,
+            self.word_whitelist_channel.id,
+        }
 
         self.data_path = Path("..", "data")
         self.paths = {
@@ -61,13 +76,17 @@ class WhitelistCog(commands.Cog):
         }
 
         self.react_emojis = {
-            "approve": self.bot.CFG.get("whitelist_approve", "✅"),
-            "reject": self.bot.CFG.get("whitelist_reject", "❌"),
-            "spacer": self.bot.CFG.get("whitelist_spacer", "⬛"),
-            "set_username": self.bot.CFG.get("whitelist_set_word", "🇺"),
-            "set_word": self.bot.CFG.get("whitelist_set_username", "🇼"),
+            EmojiAction.APPROVE: self.bot.CFG.get("whitelist_approve", "✅"),
+            EmojiAction.REJECT: self.bot.CFG.get("whitelist_reject", "❌"),
+            EmojiAction.SPACER: self.bot.CFG.get("whitelist_spacer", "⬛"),
+            EmojiAction.SET_WORD: self.bot.CFG.get("whitelist_set_word", "🇺"),
+            EmojiAction.SET_USERNAME: self.bot.CFG.get("whitelist_set_username", "🇼"),
         }
-        self.react_emoji_order = ["approve", "reject", "spacer"]
+        self.react_emoji_order = [
+            EmojiAction.APPROVE,
+            EmojiAction.REJECT,
+            EmojiAction.SPACER,
+        ]
 
         self.init_files_if_missing()
         self.datasets = self.load_data()
@@ -101,11 +120,13 @@ class WhitelistCog(commands.Cog):
         )
 
         await channel.send(header_content)
-        messages_to_react: List[DiscordMessage] = []
+        messages_to_react: List[Message] = []
         for request in whitelist_text:
             messages_to_react.append(await channel.send(request))
 
-        set_emoji_key = "set_username" if is_username_req else "set_word"
+        set_emoji_key = (
+            EmojiAction.SET_USERNAME if is_username_req else EmojiAction.SET_WORD
+        )
         react_emoji_order = self.react_emoji_order + [set_emoji_key]
 
         for message in messages_to_react:
@@ -192,3 +213,61 @@ class WhitelistCog(commands.Cog):
             usernames=datasets.pop("usernames"),
             version=0,
         )
+
+    async def move_request_to_rejected(self, message: Message):
+        """Send a copy of the message with the author and source channel as a header to the rejected channel"""
+        await self.rejected_channel.send(
+            f"__({cast(TextChannel, message.channel).mention}) {message.author.display_name}__\n{message.content}"
+        )
+        await message.delete()
+
+    async def approve_request(self, message: Message, is_username: bool):
+        pass
+
+    @commands.Cog.listener("on_raw_reaction_add")
+    async def whitelist_request_action(self, payload: RawReactionActionEvent):
+        if payload.user_id == self.bot.client.user.id:
+            return
+
+        if payload.guild_id != self.bot.guild.id:
+            return
+
+        if payload.channel_id not in self.valid_react_channel_ids:
+            return
+
+        decision = None
+        for decision_name, emoji in self.react_emojis.items():
+            if str(payload.emoji) == emoji:
+                decision = decision_name
+                break
+
+        if decision is None:
+            return
+
+        # Set a generic approve to specific approval based on channel
+        if decision == EmojiAction.APPROVE:
+            if payload.channel_id == self.user_whitelist_channel.id:
+                decision = EmojiAction.SET_USERNAME
+            elif payload.channel_id == self.word_whitelist_channel.id:
+                decision = EmojiAction.SET_WORD
+            else:
+                # Cancel if its a reaction in a channel we're not listening to
+                return
+
+        channel: Optional[TextChannel] = self.bot.guild.get_channel(payload.channel_id)
+        if channel is None:
+            raise ValueError(
+                f"Could not find channel ({payload.channel_id}) despite a detected reaction!"
+            )
+
+        message = await channel.fetch_message(payload.message_id)
+
+        match decision:
+            case EmojiAction.REJECT:
+                await self.move_request_to_rejected(message)
+
+            case EmojiAction.SET_USERNAME:
+                await self.approve_request(message, is_username=True)
+
+            case EmojiAction.SET_WORD:
+                await self.approve_request(message, is_username=False)
