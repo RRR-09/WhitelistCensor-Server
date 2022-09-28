@@ -4,6 +4,7 @@ data/custom.json
 data/nicknames.json
 data/trusted_usernames.json
 data/usernames.json
+data/version.json
 config.json
 *.log
 
