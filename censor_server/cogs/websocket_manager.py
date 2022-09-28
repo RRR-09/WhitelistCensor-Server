@@ -19,10 +19,14 @@ class WSResponse(str, Enum):
     COMPLETE = "COMPLETE"
     AUTH_SUCCESS = "AUTH_SUCCESS"
     AUTH_FAIL = "AUTH_FAIL"
+    WHITELIST_UPDATE = "WHITELIST_UPDATE"
 
 
 class WSManager:
-    def __init__(self, valid_ids: Set[str], request_whitelist_func: Callable):
+    def __init__(
+        self, server_id: str, valid_ids: Set[str], request_whitelist_func: Callable
+    ):
+        self.server_id = server_id
         self.connections: Set[str] = set()
         self.valid_ids = valid_ids
         self.request_whitelist_func = request_whitelist_func
@@ -75,26 +79,33 @@ class WSManager:
 
                 await async_sleep(0)
         except websockets.exceptions.ConnectionClosedError:
-            pass
+            self.connections.remove(websocket)
 
-        self.connections.remove(websocket)
+        print("[WS] Handler passed")
 
-    def message_all(self, message):
-        print(f"[WS] Sent: {message}")
-        websockets.broadcast(self.connections, message)
-
-    def message_all_silent(self, message):
-        websockets.broadcast(self.connections, message)
+    async def broadcast_update(self, word: str, is_username: bool):
+        timestamp = f"servermsg_{str(time()).replace('.','')}"
+        message = {
+            "id": self.server_id,
+            "timestamp": timestamp,
+            "message": WSResponse.WHITELIST_UPDATE,
+            "data": {"word": word, "is_username": is_username},
+        }
+        websockets.broadcast(self.connections, json.dumps(message))  # type: ignore
+        print(f"[WS] Broadcast {message['data']}")
 
 
 class WebsocketManagerCog(commands.Cog):
     def __init__(self, bot: BotClass):
         self.bot = bot
+        server_id: str = self.bot.CFG["ws_server_id"]
         authorized_clients: Set[str] = self.bot.CFG.get("ws_authorized_clients", set())
         request_whitelist_func = self.bot.client.get_cog(
             "WhitelistCog"
         ).request_whitelist
-        self.ws_manager = WSManager(authorized_clients, request_whitelist_func)
+        self.ws_manager = WSManager(
+            server_id, authorized_clients, request_whitelist_func
+        )
         asyncio.create_task(self.ws_init())
 
     async def ws_init(self):

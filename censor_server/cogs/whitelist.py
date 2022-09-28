@@ -4,8 +4,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Set, TypedDict, cast
 
+import aiofiles
+from cogs.websocket_manager import WSManager  # type: ignore
 from discord import Message, RawReactionActionEvent, TextChannel
-from discord.ext import commands  # type: ignore
+from discord.ext import commands
 from utils import BotClass
 
 
@@ -72,6 +74,7 @@ class WhitelistCog(commands.Cog):
             "random_suffixes": self.data_path / "random_suffixes.json",
             "trusted_usernames": self.data_path / "trusted_usernames.json",
             "usernames": self.data_path / "usernames.json",
+            "version": self.data_path / "version.json",
             "sorted_datasets": self.data_path / "sorted_datasets",
         }
 
@@ -90,6 +93,10 @@ class WhitelistCog(commands.Cog):
 
         self.init_files_if_missing()
         self.datasets = self.load_data()
+        # self.version_data_path = Path(
+        #     self.bot.CFG.get("version_data_path", ["..", "version_data"])
+        # )
+        # self.version = self.load_version()
 
     async def request_whitelist(self, data: Dict):
         requests = data.get("requests", [])
@@ -147,6 +154,7 @@ class WhitelistCog(commands.Cog):
             "random_suffixes": [],
             "trusted_usernames": [],
             "usernames": [],
+            "version": {"version": 1},
         }
         for file_path_key, default_value in default_data.items():
             path = self.paths[file_path_key]
@@ -199,6 +207,14 @@ class WhitelistCog(commands.Cog):
         except Exception:
             raise ValueError(f"{self.paths['nicknames']} malformed or missing")
 
+        # Load version and parse
+        try:
+            with open(self.paths["version"], "r") as f:
+                data = json.load(f)
+                version = int(data["version"])
+        except Exception:
+            raise ValueError(f"{self.paths['version']} malformed or missing")
+
         return WhitelistDatasets(
             blacklist=datasets.pop("blacklist"),
             custom=datasets.pop("custom"),
@@ -211,7 +227,25 @@ class WhitelistCog(commands.Cog):
             sorted_datasets=datasets.pop("sorted_datasets"),
             trusted_usernames=datasets.pop("trusted_usernames"),
             usernames=datasets.pop("usernames"),
-            version=0,
+            version=version,
+        )
+
+    async def add_and_save(self, word: str, is_username: bool):
+        """
+        Adds a word to the whitelist, and increments the version. Saves both changes to respective files.
+        """
+        dataset_index = "usernames" if is_username else "custom"
+        self.datasets[dataset_index].add(word)  # type: ignore
+        self.datasets["version"] += 1
+
+        async with aiofiles.open(self.paths["version"], "w") as f:
+            await f.write(json.dumps({"version": self.datasets["version"]}))
+
+        async with aiofiles.open(self.paths[dataset_index], "w") as f:
+            await f.write(json.dumps(list(self.datasets[dataset_index])))  # type: ignore
+
+        print(
+            f"[Saved {word} to {dataset_index} dataset (-> v{self.datasets['version']}).]"
         )
 
     async def move_request_to_rejected(self, message: Message):
@@ -222,7 +256,14 @@ class WhitelistCog(commands.Cog):
         await message.delete()
 
     async def approve_request(self, message: Message, is_username: bool):
-        pass
+        # HACK: Assumes the message is fmted like `!whitelist wordhere` or `!userwhitelist wordhere`
+        word = message.content.split(" ", 1)[-1]
+
+        await self.add_and_save(word, is_username)
+        active_ws_manager: WSManager = self.bot.client.get_cog(
+            "WebsocketManagerCog"
+        ).ws_manager
+        await active_ws_manager.broadcast_update(word, is_username)
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def whitelist_request_action(self, payload: RawReactionActionEvent):
