@@ -1,6 +1,6 @@
 # Whitelist Censor Service
 
-A standalone censoring service, whitelist-style. Centrally-mangaged, synchronized, offline-friendly. Only intended for personal use between projects.
+A standalone censoring service, whitelist-style. Centrally-managed, synchronized, offline-friendly. Only intended for personal use between projects.
 
 # About
 
