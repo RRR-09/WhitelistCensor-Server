@@ -6,13 +6,18 @@ A standalone censoring service, whitelist-style. Centrally-mangaged, synchronize
 
 Todo
 
-# FAQ
+# Design FAQ
+
+## Why \<question here\>?
+
+- A majority of questions can be answered by "I wanted to do it `x` way, I _can_ do it `x` way, so I did it `x` way". It can end there, this project isn't a demonstration of my capabilities as an architect.
+- If you want to seek further rationalization for some reason, read on.
 
 ## Why does the Discord bot have a lot of weird code?
 
 - Standard boilerplate for my discord bots. You could argue a lot of it isn't needed and won't be needed.
 
-## Why not designate a master server and communicate locally over intranet?
+## Why not designate a local, master 'server' and communicate locally over intranet?
 
 - My personal servers are restarted daily, which means downtime or potential silent "failed-to-start"s.
 - My personal servers are running livestreams that involve mouse+keyboard manipulation, which would make maintenance difficult and create unneccesary downtime.
@@ -29,20 +34,34 @@ Todo
 
 - Additional work, adds a failure point. The VPN may fail, disconnect, or land in a broken state, which would require additional work to account for, even if its unlikely to happen.
 
-## Why not use a delta update system instead of downloading entire files?
-
-- Guaranteed consistency, I don't want to create additional work for a validation system. The files themselves are quite small in the grand scheme of things.
-
-## Why not use RPC, Websockets, or a message broker like ZeroMQ?
+## For connecting from local client to remote server, why not use RPC or a message broker like ZeroMQ?
 
 - I don't have enough experience in them to create a system as quickly as I would this one.
 - May require authentication or additional security work.
-- REST requests are easy to do in any language, any of the mentioned solutions require more integration code and/or more work.
+
+## For connecting from \<`xyz project`\> to local censor client, why not use \<`something thats not an HTTP server`\>?
+
+- REST requests are easy to do in any language, making it very easy for a project of any type to integrate.
+- Using another protocol would require more complicated integration code in the project utilizing the censor service.
+
+  (including websockets, which despite being used for `local client`->`remote server` communication, are not as universal and easy as HTTP)
+
+## Why not use a delta update system instead of downloading entire files?
+
+- Guaranteed consistency.
+- I don't want to create additional work for a validation system.
+- The files themselves are quite small in the grand scheme of things.
 
 ## Your solution doesn't seem very secure
 
-- The data is not sensitive.
-- My concerns about security arise from malicious attacks or high volume/unauthorized requests. I believe this to be an adequate, low-time-cost solution. Security by obscurity is acceptable for this project.
+Perhaps, but here are all the truths of the project, and hopefully you will agree its "secure enough" given the low time cost, both initial development and maintenance.
+
+- The data itself is not very sensitive.
+- The client is not accessible outside LAN.
+- The server is fairly non-standard, both in architecture and server software (Python asyncio TCP server).
+- Since the server is just a websocket server, it will not be indexed by a search engine.
+- My concerns about security arise from CVE exploiters, high volume requests, or unauthorized usage. Targetted attacks, especially ones that would succeed, are unlikely and an acceptable risk.
+- Security by obscurity is more than an effective primary shield for the usecases I intend for this project.
 
 ## Your solution is inefficient/against standards
 
