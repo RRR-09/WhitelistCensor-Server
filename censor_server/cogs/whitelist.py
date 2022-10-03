@@ -8,7 +8,7 @@ import aiofiles
 from cogs.websocket_manager import WSManager  # type: ignore
 from discord import Message, RawReactionActionEvent, TextChannel
 from discord.ext import commands
-from utils import BotClass
+from utils import BotClass, do_log
 
 
 class EmojiAction(str, Enum):
@@ -159,7 +159,7 @@ class WhitelistCog(commands.Cog):
         for file_path_key, default_value in default_data.items():
             path = self.paths[file_path_key]
             if not path.exists():
-                print(f"[Initalizing file '{path}']")
+                do_log(f"[Initalizing file '{path}']")
                 with open(path, "w") as f:
                     json.dump(default_value, f)
 
@@ -183,6 +183,7 @@ class WhitelistCog(commands.Cog):
                 with open(dataset_path, "r") as f:
                     data = json.load(f)
                     datasets[dataset_type] = set(data)
+                    do_log(f"Loaded {dataset_path.as_posix()}")
             except Exception:
                 raise ValueError(f"{dataset_path} malformed or missing")
 
@@ -194,6 +195,7 @@ class WhitelistCog(commands.Cog):
                 with open(dataset_file, "r") as f:
                     data = json.load(f)
                     datasets["sorted_datasets"].update(set(data))
+                    do_log(f"Loaded {dataset_file.as_posix()}")
             except Exception:
                 raise ValueError(f"{dataset_file} malformed or missing")
 
@@ -204,6 +206,7 @@ class WhitelistCog(commands.Cog):
                 datasets["nicknames_set"] = set(nicknames.keys()).union(
                     set(nicknames.values())
                 )
+                do_log(f"Loaded {self.paths['nicknames'].as_posix()}")
         except Exception:
             raise ValueError(f"{self.paths['nicknames']} malformed or missing")
 
@@ -212,6 +215,7 @@ class WhitelistCog(commands.Cog):
             with open(self.paths["version"], "r") as f:
                 data = json.load(f)
                 version = int(data["version"])
+                do_log(f"Loaded {self.paths['version'].as_posix()}")
         except Exception:
             raise ValueError(f"{self.paths['version']} malformed or missing")
 
@@ -244,7 +248,7 @@ class WhitelistCog(commands.Cog):
         async with aiofiles.open(self.paths[dataset_index], "w") as f:
             await f.write(json.dumps(list(self.datasets[dataset_index])))  # type: ignore
 
-        print(
+        do_log(
             f"[Saved {word} to {dataset_index} dataset (-> v{self.datasets['version']}).]"
         )
 

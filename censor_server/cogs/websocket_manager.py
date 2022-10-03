@@ -7,7 +7,7 @@ from typing import Callable, Set
 
 import websockets
 from discord.ext import commands  # type: ignore
-from utils import BotClass
+from utils import BotClass, do_log
 
 
 class WSFunction(str, Enum):
@@ -53,11 +53,11 @@ class WSManager:
         response_message = WSResponse.COMPLETE
 
         if func == WSFunction.AUTH:
-            print(f"[WS] Authed {client_id}")
+            do_log(f"[WS] Authed {client_id}")
             response_message = WSResponse.AUTH_SUCCESS
         elif func == WSFunction.WHITELIST_REQUEST:
             data = message.get("data")
-            print(f"[WS] Whitelist Request: \n{data}\n")
+            do_log(f"[WS] Whitelist Request: \n{data}\n")
             await self.request_whitelist_func(data)
 
         response = {
@@ -74,14 +74,14 @@ class WSManager:
 
         try:
             async for raw_message in websocket:
-                print("[WS] Processing message")
+                do_log("[WS] Processing message")
                 await self.process_message(websocket, raw_message)
 
                 await async_sleep(0)
         except websockets.exceptions.ConnectionClosedError:
             self.connections.remove(websocket)
 
-        print("[WS] Handler passed")
+        do_log("[WS] Handler passed")
 
     async def broadcast_update(self, word: str, is_username: bool):
         timestamp = f"servermsg_{str(time()).replace('.','')}"
@@ -92,7 +92,7 @@ class WSManager:
             "data": {"word": word, "is_username": is_username},
         }
         websockets.broadcast(self.connections, json.dumps(message))  # type: ignore
-        print(f"[WS] Broadcast {message['data']}")
+        do_log(f"[WS] Broadcast {message['data']}")
 
 
 class WebsocketManagerCog(commands.Cog):
@@ -110,12 +110,12 @@ class WebsocketManagerCog(commands.Cog):
 
     async def ws_init(self):
         while True:
-            print("[WS] Starting server")
+            do_log("[WS] Starting server")
             try:
                 async with websockets.serve(
                     self.ws_manager.ws_handler, "127.0.0.1", 8087
                 ):
-                    print("[WS] Server started")
+                    do_log("[WS] Server started")
                     await asyncio.Future()  # run forever
             except Exception:
-                print("[WS] Stopping server")
+                do_log("[WS] Stopping server")
