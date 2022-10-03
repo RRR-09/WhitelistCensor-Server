@@ -52,16 +52,14 @@ Debian 11
    >   - Can't see any folders above or adjacent to `/jail/censor_data/`
    >   - Can R/W files/folders created by `censor`
 
-# Additional instructions
+# Cloning, Installing PyEnv and Poetry
 
 Used existing server, some commands may have been skipped and missed because it was already setup. Assuming working directory of `/home/censor/`.
 
 1. `git clone (this repo's URL)`
 1. `mv (the cloned folder) whitelist_server`
    > Optional, will refer to this folder as `whitelist_server` for rest of instructions
-1. `cd ~/whitelist_server`
 1. - `curl https://pyenv.run | bash`
-
    - `nano ~/.profile`
    - Add
      ```
@@ -72,7 +70,26 @@ Used existing server, some commands may have been skipped and missed because it 
    - Re-login
    - `pyenv --version`
    - `pyenv install 3.10.x`
-   - `cd whitelist_server`
+   - `pyenv local 3.10.x`
      > Optional, Python 3.10 <= recommended
+1. - `curl -sSL https://install.python-poetry.org | python -`
+   - `nano ~/.profile`
+   - Add
+   ```
+   export PATH="$HOME/.local/bin:$PATH"
+   ```
+   - Re-login
+     > Installs Poetry using the PyEnv version of python. Substitute "`| python -`" if needed.
 
+# Setup & Launch
+
+1. `cd whitelist_server`
 1. `poetry install`
+1. `cd censor_server`
+1. Create/populate `config.json` and `.env` based on the adjacent example files
+
+   - Create folder in `/jail/censor_data/home/`, i.e. `whitelist_data`
+   - Set `data_path` config option to `["/","jail","censor_data","home","whitelist_data"]`
+   - Copy/upload any datasets to that folder
+
+1. `poetry run python censor_server/watchdog.py`
