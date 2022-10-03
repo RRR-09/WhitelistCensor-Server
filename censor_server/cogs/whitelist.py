@@ -62,8 +62,8 @@ class WhitelistCog(commands.Cog):
             self.user_whitelist_channel.id,
             self.word_whitelist_channel.id,
         }
-
-        self.data_path = Path("..", "data")
+        self.data_path_cfg: List[str] = self.bot.CFG.get("data_path", ["..", "data"])
+        self.data_path = Path(*self.data_path_cfg)
         self.paths = {
             "blacklist": self.data_path / "blacklist.json",
             "custom_old": self.data_path / "custom_old.json",

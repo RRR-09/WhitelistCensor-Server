@@ -16,6 +16,7 @@
   "whitelist_spacer": "⬛",
   "whitelist_set_username": "🇺",
   "whitelist_set_word": "🇼",
+  "data_path": ["/", "jail", "censor_data", "home", "whitelist_data"],
 
   "watchdog": {
     "bot_vars": {
