@@ -57,6 +57,7 @@ class WhitelistCog(commands.Cog):
         self.user_whitelist_channel = self.bot.channels["username-request"]
         self.word_whitelist_channel = self.bot.channels["whitelist-request"]
         self.rejected_channel = self.bot.channels["whitelist-rejected"]
+        self.approved_channel = self.bot.channels["whitelist-approved"]
 
         self.valid_react_channel_ids = {
             self.user_whitelist_channel.id,
@@ -252,9 +253,12 @@ class WhitelistCog(commands.Cog):
             f"[Saved {word} to {dataset_index} dataset (-> v{self.datasets['version']}).]"
         )
 
-    async def move_request_to_rejected(self, message: Message):
-        """Send a copy of the message with the author and source channel as a header to the rejected channel"""
-        await self.rejected_channel.send(
+    async def move_request(self, message: Message, channel: TextChannel):
+        """
+        Copies a message with the author and source channel as a header to the specified channel,
+        deleting it afterwards.
+        """
+        await channel.send(
             f"__({cast(TextChannel, message.channel).mention}) {message.author.display_name}__\n{message.content}"
         )
         await message.delete()
@@ -268,6 +272,7 @@ class WhitelistCog(commands.Cog):
             "WebsocketManagerCog"
         ).ws_manager
         await active_ws_manager.broadcast_update(word, is_username)
+        await self.move_request(message, self.approved_channel)
 
     @commands.Cog.listener("on_raw_reaction_add")
     async def whitelist_request_action(self, payload: RawReactionActionEvent):
@@ -309,7 +314,7 @@ class WhitelistCog(commands.Cog):
 
         match decision:
             case EmojiAction.REJECT:
-                await self.move_request_to_rejected(message)
+                await self.move_request(message, self.rejected_channel)
 
             case EmojiAction.SET_USERNAME:
                 await self.approve_request(message, is_username=True)
