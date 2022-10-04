@@ -52,7 +52,7 @@ Debian 11
    >   - Can't see any folders above or adjacent to `/jail/censor_data/`
    >   - Can R/W files/folders created by `censor`
 
-# Cloning, Installing PyEnv and Poetry
+# Cloning & Installing PyEnv/Poetry/UFW
 
 Used existing server, some commands may have been skipped and missed because it was already setup. Assuming working directory of `/home/censor/`.
 
@@ -75,11 +75,18 @@ Used existing server, some commands may have been skipped and missed because it 
 1. - `curl -sSL https://install.python-poetry.org | python -`
    - `nano ~/.profile`
    - Add
+
    ```
    export PATH="$HOME/.local/bin:$PATH"
    ```
+
    - Re-login
      > Installs Poetry using the PyEnv version of python. Substitute "`| python -`" if needed.
+
+1. - `sudo apt install ufw`
+   - `sudo ufw allow ssh`
+   - `sudo ufw allow 8087`
+   - `sudo ufw enable`
 
 # Setup & Launch
 
@@ -88,8 +95,9 @@ Used existing server, some commands may have been skipped and missed because it 
 1. `cd censor_server`
 1. Create/populate `config.json` and `.env` based on the adjacent example files
 
-   - Create folder in `/jail/censor_data/home/`, i.e. `whitelist_data`
+   - Change `ws_server_ip` to something like `0.0.0.0`
    - Set `data_path` config option to `["/","jail","censor_data","home","whitelist_data"]`
+   - Create folder in `/jail/censor_data/home/`, i.e. `whitelist_data`
    - Copy/upload any datasets to that folder
 
 1. `poetry run python censor_server/watchdog.py`

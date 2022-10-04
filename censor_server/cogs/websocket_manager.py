@@ -99,6 +99,7 @@ class WebsocketManagerCog(commands.Cog):
     def __init__(self, bot: BotClass):
         self.bot = bot
         server_id: str = self.bot.CFG["ws_server_id"]
+        self.server_ip: str = self.bot.CFG.get("ws_server_ip", "127.0.0.1")
         authorized_clients: Set[str] = self.bot.CFG.get("ws_authorized_clients", set())
         request_whitelist_func = self.bot.client.get_cog(
             "WhitelistCog"
@@ -113,7 +114,7 @@ class WebsocketManagerCog(commands.Cog):
             do_log("[WS] Starting server")
             try:
                 async with websockets.serve(
-                    self.ws_manager.ws_handler, "127.0.0.1", 8087
+                    self.ws_manager.ws_handler, self.server_ip, 8087
                 ):
                     do_log("[WS] Server started")
                     await asyncio.Future()  # run forever
