@@ -107,7 +107,7 @@ class WebsocketManagerCog(commands.Cog):
         self.ws_manager = WSManager(
             server_id, authorized_clients, request_whitelist_func
         )
-        asyncio.create_task(self.ws_init())
+        self.ws_server_task = asyncio.create_task(self.ws_init())
 
     async def ws_init(self):
         while True:
