@@ -4,20 +4,21 @@ Debian 11
 
 # Init + Setup SFTP access
 
+1. `sudo apt update && sudo apt install && sudo apt autoremove && sudo reboot`
 1. `sudo addgroup censor_service`
-1. `sudo useradd censor`
+1. `sudo adduser censor`
 1. `sudo usermod -G censor_service,sudo censor`
    > Can log out of root and execute further commands from `censor` user
-1. `sudo useradd censor_data`
+1. `sudo adduser censor_data`
+1. `sudo addgroup jailed_sftp_users`
 1. `sudo usermod -G censor_service,jailed_sftp_users censor_data`
-
 1. `sudo mkdir -p /jail/censor_data/home`
 1. `sudo ln -s /jail/censor_data/home /home/censor/censor_data_dir`
 1. `sudo chown root /jail/censor_data`
 1. `sudo chmod 755 /jail/censor_data`
 1. `sudo chown censor_data:censor_service /jail/censor_data/home`
 1. `sudo chmod 770 /jail/censor_data/home`
-1. `sudo chmod g+s`
+1. `sudo chmod g+s /jail/censor_data/home`
    > SetGID permission flag, make any new/changed files accessible by anyone in the group regardless of owner
 1. `sudo apt install acl`
 1. `sudo setfacl -d -m o::- /jail/censor_data/home`
@@ -51,14 +52,18 @@ Debian 11
    >   - Can R/W in the `home` folder and nowhere else
    >   - Can't see any folders above or adjacent to `/jail/censor_data/`
    >   - Can R/W files/folders created by `censor`
+   >
+   > NOTE: Be aware, over SFTP creating a file and folder with the same name (`./test` and `./test/`) will not work, will silently fail, and look like a permission issue.
 
 # Cloning & Installing PyEnv/Poetry/UFW
 
-Used existing server, some commands may have been skipped and missed because it was already setup. Assuming working directory of `/home/censor/`.
+Assuming working directory of `/home/censor/`.
 
 1. `git clone (this repo's URL)`
 1. `mv (the cloned folder) whitelist_server`
    > Optional, will refer to this folder as `whitelist_server` for rest of instructions
+1. `sudo apt install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev wget libbz2-dev liblzma-dev`
+   > Core dependencies for Python
 1. - `curl https://pyenv.run | bash`
    - `nano ~/.profile`
    - Add
@@ -69,9 +74,12 @@ Used existing server, some commands may have been skipped and missed because it 
      ```
    - Re-login
    - `pyenv --version`
-   - `pyenv install 3.10.x`
-   - `pyenv local 3.10.x`
+
+   - `pyenv install 3.10.`
+   - `pyenv local 3.10.`
+   - `python --version`
      > Optional, Python 3.10 <= recommended
+
 1. - `curl -sSL https://install.python-poetry.org | python -`
    - `nano ~/.profile`
    - Add
@@ -93,11 +101,11 @@ Used existing server, some commands may have been skipped and missed because it 
 1. `cd whitelist_server`
 1. `poetry install`
 1. `cd censor_server`
-1. Create/populate `config.json` and `.env` based on the adjacent example files
+1. Create/populate `config.json` and `.env` based on the adjacent example files in `censor_server` directory
 
    - Change `ws_server_ip` to something like `0.0.0.0`
    - Set `data_path` config option to `["/","jail","censor_data","home","whitelist_data"]`
    - Create folder in `/jail/censor_data/home/`, i.e. `whitelist_data`
    - Copy/upload any datasets to that folder
 
-1. `poetry run python censor_server/watchdog.py`
+1. `poetry run python watchdog.py`
