@@ -274,6 +274,18 @@ class WhitelistCog(commands.Cog):
         await active_ws_manager.broadcast_update(word, is_username)
         await self.move_request(message, self.approved_channel)
 
+    @commands.Cog.listener("on_message")
+    async def manual_commands(self, message: Message):
+        if message.author.id == self.bot.client.user.id:
+            return
+        if message.guild is None or message.guild.id != self.bot.guild.id:
+            return
+
+        if message.content.startswith("!whitelist "):
+            await self.approve_request(message, is_username=False)
+        elif message.content.startswith("!userwhitelist "):
+            await self.approve_request(message, is_username=True)
+
     @commands.Cog.listener("on_raw_reaction_add")
     async def whitelist_request_action(self, payload: RawReactionActionEvent):
         if payload.user_id == self.bot.client.user.id:
