@@ -133,8 +133,8 @@ class WhitelistCog(commands.Cog):
             messages_to_react.append(await channel.send(request))
 
         set_emoji_key = (
-            EmojiAction.SET_USERNAME if is_username_req else EmojiAction.SET_WORD
-        )
+            EmojiAction.SET_WORD if is_username_req else EmojiAction.SET_USERNAME
+        )  # We want the opposite of whatever we're currently requesting
         react_emoji_order = self.react_emoji_order + [set_emoji_key]
 
         for message in messages_to_react:
