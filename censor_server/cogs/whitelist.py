@@ -83,8 +83,8 @@ class WhitelistCog(commands.Cog):
             EmojiAction.APPROVE: self.bot.CFG.get("whitelist_approve", "✅"),
             EmojiAction.REJECT: self.bot.CFG.get("whitelist_reject", "❌"),
             EmojiAction.SPACER: self.bot.CFG.get("whitelist_spacer", "⬛"),
-            EmojiAction.SET_WORD: self.bot.CFG.get("whitelist_set_word", "🇺"),
-            EmojiAction.SET_USERNAME: self.bot.CFG.get("whitelist_set_username", "🇼"),
+            EmojiAction.SET_WORD: self.bot.CFG.get("whitelist_set_word", "🇼"),
+            EmojiAction.SET_USERNAME: self.bot.CFG.get("whitelist_set_username", "🇺"),
         }
         self.react_emoji_order = [
             EmojiAction.APPROVE,
