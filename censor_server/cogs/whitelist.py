@@ -247,7 +247,7 @@ class WhitelistCog(commands.Cog):
             await f.write(json.dumps({"version": self.datasets["version"]}))
 
         async with aiofiles.open(self.paths[dataset_index], "w") as f:
-            await f.write(json.dumps(list(self.datasets[dataset_index])))  # type: ignore
+            await f.write(json.dumps(sorted(list(self.datasets[dataset_index])), indent=2))  # type: ignore
 
         do_log(
             f"[Saved {word} to {dataset_index} dataset (-> v{self.datasets['version']}).]"
